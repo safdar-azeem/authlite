@@ -26,6 +26,20 @@ const auth = new AuthLite({
 });
 ```
 
+## Google OAuth
+
+```typescript
+const googleUser = await auth.google.verify(idToken, 'web'); // 'web' | 'ios' | 'android'
+
+// Returns:
+// {
+//   email: string,
+//   name: string,
+//   picture: string,
+//   googleId: string
+// }
+```
+
 ## MFA (Two-Factor Authentication)
 
 ### Enrollment
@@ -69,20 +83,6 @@ if (codeIndex !== -1) {
   user.hashedBackupCodes.splice(codeIndex, 1);
   await user.save();
 }
-```
-
-## Google OAuth
-
-```typescript
-const googleUser = await auth.google.verify(idToken, 'web'); // 'web' | 'ios' | 'android'
-
-// Returns:
-// {
-//   email: string,
-//   name: string,
-//   picture: string,
-//   googleId: string
-// }
 ```
 
 ## Configuration
