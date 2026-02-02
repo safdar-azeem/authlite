@@ -7,10 +7,7 @@
   "types": "dist/index.d.ts",
   "license": "MIT",
   "author": "safdar-azeem",
-  "repository": {
-    "type": "git",
-    "url": ""
-  },
+  "repository": "https://github.com/safdar-azeem/authlite",
   "keywords": [
     "authentication",
     "2fa",
