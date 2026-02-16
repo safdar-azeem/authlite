@@ -5,7 +5,7 @@ import { ERROR_MESSAGES, DEVICE_TYPES } from '../../constants';
 
 export class GoogleModule {
   private readonly config: GoogleConfig;
-  private readonly deviceClients: Map<DeviceType, number>; // dummy mapping to check existence
+  private readonly deviceClients: Map<DeviceType, number>;
 
   constructor(config: GoogleConfig) {
     this.config = config;
@@ -117,7 +117,6 @@ export class GoogleModule {
 
       return this.mapPayloadToUser(payload);
     } catch (error) {
-      console.error('AuthLite Google Verify Error:', error);
       if (error instanceof GoogleAuthError) {
         throw error;
       }
