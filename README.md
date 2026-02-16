@@ -22,6 +22,8 @@ const auth = new AuthLite({
     webClientId: process.env.GOOGLE_WEB_CLIENT_ID,
     iosClientId: process.env.GOOGLE_IOS_CLIENT_ID,
     androidClientId: process.env.GOOGLE_ANDROID_CLIENT_ID,
+    clientSecret: process.env.GOOGLE_CLIENT_SECRET || '',
+    redirectUri: process.env.GOOGLE_REDIRECT_URI || '',
   },
 });
 ```
@@ -29,7 +31,11 @@ const auth = new AuthLite({
 ## Google OAuth
 
 ```typescript
-const googleUser = await auth.google.verify(idToken, 'web'); // 'web' | 'ios' | 'android'
+// For Web clients (pass the Access Token):
+const googleUser = await auth.google.verify(accessToken, 'web');
+
+// For Mobile clients (pass the ID Token):
+const googleUser = await auth.google.verify(idToken, 'ios'); // or 'android'
 
 // Returns:
 // {
