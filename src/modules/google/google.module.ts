@@ -1,38 +1,108 @@
-import { OAuth2Client, TokenPayload } from 'google-auth-library';
+import { OAuth2Client, TokenPayload, GenerateAuthUrlOpts, Credentials } from 'google-auth-library';
 import { GoogleConfig, DeviceType, GoogleUser } from '../../types';
 import { GoogleAuthError } from '../../core/errors';
 import { ERROR_MESSAGES, DEVICE_TYPES } from '../../constants';
 
 export class GoogleModule {
   private readonly config: GoogleConfig;
-  private readonly clients: Map<DeviceType, OAuth2Client>;
+  private readonly deviceClients: Map<DeviceType, number>; // dummy mapping to check existence
 
   constructor(config: GoogleConfig) {
     this.config = config;
-    this.clients = new Map();
-    this.initializeClients();
+    this.deviceClients = new Map();
+    this.validateClients();
   }
 
-  private initializeClients(): void {
+  private validateClients(): void {
     if (this.config.webClientId) {
-      this.clients.set(DEVICE_TYPES.WEB, new OAuth2Client(this.config.webClientId));
+      this.deviceClients.set(DEVICE_TYPES.WEB, 1);
     }
     if (this.config.iosClientId) {
-      this.clients.set(DEVICE_TYPES.IOS, new OAuth2Client(this.config.iosClientId));
+      this.deviceClients.set(DEVICE_TYPES.IOS, 1);
     }
     if (this.config.androidClientId) {
-      this.clients.set(DEVICE_TYPES.ANDROID, new OAuth2Client(this.config.androidClientId));
+      this.deviceClients.set(DEVICE_TYPES.ANDROID, 1);
+    }
+  }
+
+  private createClient(deviceType: DeviceType): OAuth2Client {
+    const baseOptions = {
+      clientSecret: this.config.clientSecret,
+      redirectUri: this.config.redirectUri,
+    };
+
+    let clientId: string | undefined;
+
+    switch (deviceType) {
+      case DEVICE_TYPES.WEB:
+        clientId = this.config.webClientId;
+        break;
+      case DEVICE_TYPES.IOS:
+        clientId = this.config.iosClientId;
+        break;
+      case DEVICE_TYPES.ANDROID:
+        clientId = this.config.androidClientId;
+        break;
+    }
+
+    if (!clientId) {
+      throw new GoogleAuthError(ERROR_MESSAGES.MISSING_CLIENT_ID);
+    }
+
+    return new OAuth2Client({
+      ...baseOptions,
+      clientId,
+    });
+  }
+
+  generateAuthUrl(deviceType: DeviceType, opts?: GenerateAuthUrlOpts): string {
+    if (!this.deviceClients.has(deviceType)) {
+      throw new GoogleAuthError(ERROR_MESSAGES.MISSING_CLIENT_ID);
+    }
+    const client = this.createClient(deviceType);
+    return client.generateAuthUrl(opts);
+  }
+
+  async getToken(code: string, deviceType: DeviceType): Promise<{ tokens: Credentials; res: any }> {
+    if (!this.deviceClients.has(deviceType)) {
+      throw new GoogleAuthError(ERROR_MESSAGES.MISSING_CLIENT_ID);
+    }
+    const client = this.createClient(deviceType);
+    try {
+      return await client.getToken(code);
+    } catch (error) {
+      if (error instanceof GoogleAuthError) {
+        throw error;
+      }
+      throw new GoogleAuthError(error instanceof Error ? error.message : 'Failed to get token');
     }
   }
 
   async verify(token: string, deviceType: DeviceType): Promise<GoogleUser> {
-    const client = this.clients.get(deviceType);
-
-    if (!client) {
+    if (!this.deviceClients.has(deviceType)) {
       throw new GoogleAuthError(ERROR_MESSAGES.MISSING_CLIENT_ID);
     }
 
+    const client = this.createClient(deviceType);
+
     try {
+      if (deviceType === DEVICE_TYPES.WEB) {
+        // For WEB, verify via userinfo endpoint using access token
+        // We set credentials on this specific client instance (thread-safe as it's local to request)
+        client.setCredentials({ access_token: token });
+
+        const response = await client.request<any>({
+          url: 'https://www.googleapis.com/oauth2/v3/userinfo',
+        });
+
+        return {
+          email: response.data.email,
+          name: response.data.name,
+          picture: response.data.picture,
+          googleId: response.data.sub,
+        };
+      }
+
       const audience = this.getAudience(deviceType);
       const ticket = await client.verifyIdToken({
         idToken: token,
@@ -47,6 +117,7 @@ export class GoogleModule {
 
       return this.mapPayloadToUser(payload);
     } catch (error) {
+      console.error('AuthLite Google Verify Error:', error);
       if (error instanceof GoogleAuthError) {
         throw error;
       }
