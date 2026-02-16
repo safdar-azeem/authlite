@@ -2,6 +2,8 @@ export interface GoogleConfig {
   webClientId?: string;
   iosClientId?: string;
   androidClientId?: string;
+  clientSecret: string;
+  redirectUri?: string;
 }
 
 export interface AuthLiteConfig {
