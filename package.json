@@ -1,6 +1,6 @@
 {
   "name": "authlite",
-  "version": "0.0.3",
+  "version": "0.0.4",
   "description": "Lightweight authentication library with 2FA (TOTP/Email) and Google OAuth support",
   "main": "dist/index.js",
   "module": "dist/index.mjs",
